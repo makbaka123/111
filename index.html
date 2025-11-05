@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Euler Identity — Student Version (v1)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body { height:100%; margin:0; background:#000; color:#fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Arial; }
+    #ui { position: absolute; right: 18px; top: 18px; z-index: 20; display:flex; flex-direction:column; gap:8px; }
+    button { background:#111; color:#fff; border:1px solid #666; padding:8px 10px; border-radius:6px; cursor:pointer; font-size:14px; }
+    input[type=range] { width:220px; }
+    .label { font-size:13px; color:#ddd; margin-bottom:4px; }
+    .credit { position:absolute; left:18px; bottom:12px; color:#777; font-size:12px; }
+    #canvas-wrap { display:flex; justify-content:center; align-items:center; height:100vh; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <div>
+      <button id="play">Play ▶</button>
+      <button id="reset">Reset</button>
+    </div>
+    <div class="label">t (radians)</div>
+    <input id="tSlider" type="range" min="0" max="3.1416" step="0.001" value="0">
+  </div>
+  <div id="canvas-wrap"></div>
+  <div class="credit">Student demo — Euler identity visualisation</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+  <script>
+    // Student-style Euler animation v1
+    let t = 0;
+    let playing = false;
+    let tSlider, playBtn, resetBtn;
+    let canvasSize = {w: 900, h: 600};
+
+    function setup() {
+      let c = createCanvas(canvasSize.w, canvasSize.h);
+      c.parent('canvas-wrap');
+      angleMode(RADIANS);
+      textFont('Segoe UI, Roboto, Arial, sans-serif');
+      // UI elements
+      playBtn = document.getElementById('play');
+      resetBtn = document.getElementById('reset');
+      tSlider = document.getElementById('tSlider');
+      playBtn.onclick = () => { playing = !playing; updatePlayText(); };
+      resetBtn.onclick = () => { t = 0; playing = false; tSlider.value = t; updatePlayText(); };
+      tSlider.oninput = () => { t = Number(tSlider.value); playing = false; updatePlayText(); };
+      updatePlayText();
+    }
+
+    function updatePlayText() {
+      playBtn.textContent = playing ? 'Pause ❚❚' : 'Play ▶';
+    }
+
+    function draw() {
+      background(0); // black background
+
+      // layout
+      let margin = 60;
+      let cx = width * 0.40;
+      let cy = height * 0.50;
+      let R = Math.min(width, height) * 0.28;
+
+      drawAxes(cx, cy, R);
+
+      // unit circle
+      stroke(255);
+      strokeWeight(2);
+      noFill();
+      circle(cx, cy, R*2);
+
+      // labels for 1, i, -1, -i
+      fill(255);
+      noStroke();
+      textSize(14);
+      textAlign(LEFT, CENTER);
+      text("1", cx + R + 8, cy);
+      text("i", cx - 6, cy - R - 12);
+      text("-1", cx - R - 22, cy);
+      text("-i", cx - 6, cy + R + 12);
+
+      // small markers along semicircle
+      stroke(100);
+      strokeWeight(1);
+      for (let a=0; a<Math.PI+0.01; a += Math.PI/8) {
+        let px = cx + R * Math.cos(a);
+        let py = cy - R * Math.sin(a);
+        point(px, py);
+      }
+
+      // advance when playing
+      if (playing) {
+        t += 0.008;
+        if (t > PI) { t = PI; playing = false; updatePlayText(); }
+        tSlider.value = t;
+      }
+
+      // compute current point
+      let px = cx + R * Math.cos(t);
+      let py = cy - R * Math.sin(t);
+
+      // trace arc (teal subtle)
+      stroke(60,180,150,160);
+      strokeWeight(4);
+      noFill();
+      beginShape();
+      for (let a = 0; a <= t; a += 0.01) {
+        vertex(cx + R * Math.cos(a), cy - R * Math.sin(a));
+      }
+      endShape();
+
+      // moving point
+      fill(255,165,0);
+      noStroke();
+      circle(px, py, 12);
+
+      // radius line
+      stroke(255,165,0,180);
+      strokeWeight(2);
+      line(cx, cy, px, py);
+
+      // projection helper lines
+      stroke(120);
+      strokeWeight(1);
+      line(px, py, px, cy);
+      line(px, py, cx, py);
+
+      // small right-hand graphs for cos/sin
+      drawMiniGraphs(cx + R + 140, cy - 120, 300, 220, t);
+
+      // live formula display
+      displayFormula(t, cx, cy, px, py);
+
+      // highlight final formula when reach pi
+      if (abs(t - PI) < 0.0005) {
+        push();
+        fill(255,255,255);
+        textSize(28);
+        textAlign(CENTER, CENTER);
+        text("e^{iπ} = -1", cx, cy + R + 60);
+        pop();
+      }
+    }
+
+    function drawAxes(cx, cy, R) {
+      stroke(255);
+      strokeWeight(1.5);
+      // axes
+      line(cx - R - 80, cy, cx + R + 80, cy);
+      line(cx, cy - R - 80, cx, cy + R + 80);
+      // axis labels
+      textSize(13);
+      fill(255);
+      noStroke();
+      textAlign(LEFT, TOP);
+      text("Real", cx + R + 85, cy - 8);
+      textAlign(RIGHT, BOTTOM);
+      text("Imag", cx - 6, cy - R - 92);
+    }
+
+    function drawMiniGraphs(x, y, w, h, tval) {
+      push();
+      translate(x, y);
+      noStroke();
+      fill(20);
+      rect(-10, -10, w+20, h+20, 6);
+      // draw cos (grey) and sin (orange)
+      noFill();
+      stroke(200);
+      beginShape();
+      for (let a=0; a<=PI; a+=0.02) {
+        let xx = map(a, 0, PI, 0, w);
+        let yy = map(Math.cos(a), -1, 1, h, 0);
+        vertex(xx, yy);
+      }
+      endShape();
+      stroke(255,165,0);
+      beginShape();
+      for (let a=0; a<=PI; a+=0.02) {
+        let xx = map(a, 0, PI, 0, w);
+        let yy = map(Math.sin(a), -1, 1, h, 0);
+        vertex(xx, yy);
+      }
+      endShape();
+      // vertical indicator
+      stroke(100); strokeWeight(1);
+      let xt = map(tval, 0, PI, 0, w);
+      line(xt, 0, xt, h);
+      noStroke(); fill(200); textSize(12);
+      textAlign(LEFT, TOP); text("Re (cos t)", 2, h + 6);
+      fill(255,165,0); text("Im (sin t)", 110, h + 6);
+      pop();
+    }
+
+    function displayFormula(tval, cx, cy, px, py) {
+      let re = Math.cos(tval).toFixed(3);
+      let im = Math.sin(tval).toFixed(3);
+      push();
+      translate(20, 20);
+      noStroke();
+      fill(255);
+      textSize(16);
+      textAlign(LEFT, TOP);
+      text("e^{it} = cos t + i sin t", 0, 0);
+      textSize(14);
+      fill(200);
+      text("t = " + tval.toFixed(3) + "  →  e^{it} ≈ " + re + (Number(im) >= 0 ? " + " + im + "i" : " - " + Math.abs(im) + "i"), 0, 24);
+      pop();
+    }
+
+    function windowResized() {
+      let ww = Math.min(window.innerWidth - 40, 1100);
+      let hh = Math.min(window.innerHeight - 40, 700);
+      resizeCanvas(ww, hh);
+      canvasSize.w = ww; canvasSize.h = hh;
+    }
+  </script>
+</body>
+</html>
+
